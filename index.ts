@@ -26,6 +26,7 @@ export async function connectToMongoDB() {
 
     const database = client.db(process.env.AUTH_BD_NAME);
     const jobCollection = database.collection("jobs");
+    const applicationsCollection = database.collection("applications");
 
     app.post("/api/client/jobs", async (req, res) => {
       const job = req.body;
@@ -87,6 +88,38 @@ export async function connectToMongoDB() {
         res.send({ success: true, job });
       } catch (error) {
         console.error("Error fetching single job by ID:", error);
+        res
+          .status(500)
+          .send({ success: false, error: "Internal Server Error" });
+      }
+    });
+
+    // applications api
+    app.post("/api/applications", async (req, res) => {
+      try {
+        const application = req.body;
+
+        const query = {
+          jobId: application.jobId,
+          applicantEmail: application.applicantEmail,
+        };
+
+        const alreadyApplied = await applicationsCollection.findOne(query);
+        if (alreadyApplied) {
+          return res.status(400).send({
+            success: false,
+            message: "You have already submitted a proposal for this project!",
+          });
+        }
+
+        const result = await applicationsCollection.insertOne(application);
+        res.status(201).send({
+          success: true,
+          message: "Proposal submitted successfully!",
+          insertedId: result.insertedId,
+        });
+      } catch (error) {
+        console.error("Error saving application to DB:", error);
         res
           .status(500)
           .send({ success: false, error: "Internal Server Error" });
