@@ -27,10 +27,33 @@ export async function connectToMongoDB() {
     const database = client.db(process.env.AUTH_BD_NAME);
     const jobCollection = database.collection("jobs");
 
-    app.post("/api/jobs", async (req, res) => {
+    app.post("/api/client/jobs", async (req, res) => {
       const job = req.body;
       const result = await jobCollection.insertOne(job);
       res.send(result);
+    });
+
+    app.get("/api/client/my-jobs", async (req, res) => {
+      try {
+        const clientEmail = req.query.email;
+
+        if (!clientEmail) {
+          return res
+            .status(400)
+            .send({ error: "Client email parameter is required" });
+        }
+
+        // নির্দিষ্ট ক্লায়েন্টের ইমেইল অনুযায়ী ফিল্টার করে সব জব নিয়ে আসা (সবচেয়ে নতুনটা আগে)
+        const jobsCard = await jobCollection
+          .find({ clientEmail: clientEmail })
+          .sort({ _id: -1 })
+          .toArray();
+
+        res.send({ success: true, jobsCard });
+      } catch (error) {
+        console.error("Error fetching client jobs:", error);
+        res.status(500).send({ error: "Internal Server Error" });
+      }
     });
 
     console.log("You successfully connected to MongoDB!");
