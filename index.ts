@@ -43,7 +43,6 @@ export async function connectToMongoDB() {
             .send({ error: "Client email parameter is required" });
         }
 
-        // নির্দিষ্ট ক্লায়েন্টের ইমেইল অনুযায়ী ফিল্টার করে সব জব নিয়ে আসা (সবচেয়ে নতুনটা আগে)
         const jobsCard = await jobCollection
           .find({ clientEmail: clientEmail })
           .sort({ _id: -1 })
@@ -53,6 +52,44 @@ export async function connectToMongoDB() {
       } catch (error) {
         console.error("Error fetching client jobs:", error);
         res.status(500).send({ error: "Internal Server Error" });
+      }
+    });
+    // all jobs
+    app.get("/api/client/jobs", async (req, res) => {
+      try {
+        const jobsCard = await jobCollection
+          .find({})
+          .sort({ _id: -1 })
+          .toArray();
+
+        res.send({ success: true, jobsCard });
+      } catch (error) {
+        console.error("Error fetching all global jobs:", error);
+        res
+          .status(500)
+          .send({ success: false, error: "Internal Server Error" });
+      }
+    });
+    // details page api
+    app.get("/api/client/jobs/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const { ObjectId } = require("mongodb");
+
+        const job = await jobCollection.findOne({ _id: new ObjectId(id) });
+
+        if (!job) {
+          return res
+            .status(404)
+            .send({ success: false, message: "Job not found" });
+        }
+
+        res.send({ success: true, job });
+      } catch (error) {
+        console.error("Error fetching single job by ID:", error);
+        res
+          .status(500)
+          .send({ success: false, error: "Internal Server Error" });
       }
     });
 
