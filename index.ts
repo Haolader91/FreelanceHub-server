@@ -250,6 +250,106 @@ app.get("/api/freelancers", async (req: Request, res: Response) => {
   }
 });
 
+// POST: Send Direct Offer
+app.post("/api/offers", async (req: Request, res: Response) => {
+  try {
+    const {
+      freelancerEmail,
+      freelancerName,
+      clientEmail,
+      clientName,
+      budget,
+      message,
+    } = req.body;
+
+    if (!freelancerEmail || !budget || !message) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Required fields missing" });
+    }
+
+    const offerData = {
+      freelancerEmail,
+      freelancerName: freelancerName || "Freelancer",
+      clientEmail: clientEmail || "Anonymous Client",
+      clientName: clientName || "Client",
+      budget: Number(budget),
+      message,
+      status: "pending",
+      createdAt: new Date(),
+    };
+
+    const result = await database.collection("offers").insertOne(offerData);
+
+    return res.status(201).json({
+      success: true,
+      message: "Offer sent successfully!",
+      offerId: result.insertedId,
+    });
+  } catch (error) {
+    console.error("Error creating offer:", error);
+    return res
+      .status(500)
+      .json({ success: false, message: "Failed to send offer" });
+  }
+});
+
+// GET: Workspace Analytics Data
+app.get("/api/analytics", async (req: Request, res: Response) => {
+  try {
+    // ১.
+    const totalJobs = await jobCollection.countDocuments();
+    const totalFreelancers = await userCollection.countDocuments({
+      role: "FREELANCER",
+    });
+
+    // ২.
+    const shortlistedCount = await applicationsCollection.countDocuments({
+      status: "shortlisted",
+    });
+    const rejectedCount = await applicationsCollection.countDocuments({
+      status: "rejected",
+    });
+    const pendingCount = await applicationsCollection.countDocuments({
+      $or: [{ status: "pending" }, { status: { $exists: false } }],
+    });
+
+    const budgetStats = await jobCollection
+      .aggregate([
+        {
+          $group: {
+            _id: null,
+            totalBudget: { $sum: { $toDouble: "$budget" } },
+          },
+        },
+      ])
+      .toArray();
+
+    const totalBudget = budgetStats[0]?.totalBudget || 0;
+    const totalApps = shortlistedCount + rejectedCount + pendingCount;
+    const conversionRate =
+      totalApps > 0 ? ((shortlistedCount / totalApps) * 100).toFixed(1) : "0";
+
+    return res.status(200).json({
+      success: true,
+      analytics: {
+        totalBudgetSpent: totalBudget,
+        hiringConversion: conversionRate,
+        activeJobs: totalJobs,
+        totalFreelancers,
+        chartData: [
+          { name: "Shortlisted", count: shortlistedCount, fill: "#10b981" },
+          { name: "Pending", count: pendingCount, fill: "#3b82f6" },
+          { name: "Rejected", count: rejectedCount, fill: "#f43f5e" },
+        ],
+      },
+    });
+  } catch (error) {
+    console.error("Analytics fetch error:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
 // Local Development listen
 if (process.env.NODE_ENV !== "production") {
   app.listen(port, () => {
