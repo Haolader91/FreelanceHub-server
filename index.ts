@@ -177,8 +177,7 @@ app.get(
           .status(400)
           .send({ success: false, message: "Applicant email is required" });
       }
-
-      // ফ্রিলেঞ্চারের ইমেইল অনুযায়ী ডাটাবেজ থেকে অ্যাপ্লাই করা জবগুলো আনা
+      // freelancer ar apply kora jod dekanor api
       const applications = await applicationsCollection
         .find({ applicantEmail: applicantEmail })
         .sort({ _id: -1 })
@@ -187,6 +186,44 @@ app.get(
       res.send({ success: true, applications });
     } catch (error) {
       console.error("Error fetching freelancer applications:", error);
+      res.status(500).send({ success: false, error: "Internal Server Error" });
+    }
+  },
+);
+
+// Application status update route
+app.patch(
+  "/api/client/applications/:id/status",
+  async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+
+      if (!id || !status) {
+        return res
+          .status(400)
+          .send({ success: false, message: "ID and status are required" });
+      }
+
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: { status: status },
+      };
+
+      const result = await applicationsCollection.updateOne(filter, updateDoc);
+
+      if (result.modifiedCount === 0) {
+        return res
+          .status(400)
+          .send({ success: false, message: "Application status not updated" });
+      }
+
+      res.send({
+        success: true,
+        message: `Application status updated to ${status}`,
+      });
+    } catch (error) {
+      console.error("Error updating application status:", error);
       res.status(500).send({ success: false, error: "Internal Server Error" });
     }
   },
