@@ -135,6 +135,36 @@ app.post("/api/applications", async (req: Request, res: Response) => {
   }
 });
 
+// Fetch applications for a specific client
+app.get("/api/client/applications", async (req: Request, res: Response) => {
+  try {
+    const clientEmail = req.query.email as string;
+
+    if (!clientEmail) {
+      return res.status(400).send({
+        success: false,
+        message: "Client email parameter is required",
+      });
+    }
+
+    const applications = await applicationsCollection
+      .find({
+        $or: [
+          { clientEmail: clientEmail },
+
+          { clientName: clientEmail.split("@")[0] },
+        ],
+      })
+      .sort({ _id: -1 })
+      .toArray();
+
+    res.send({ success: true, applications });
+  } catch (error) {
+    console.error("Error fetching client applications:", error);
+    res.status(500).send({ success: false, error: "Internal Server Error" });
+  }
+});
+
 // Local Development listen
 if (process.env.NODE_ENV !== "production") {
   app.listen(port, () => {
