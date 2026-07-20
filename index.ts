@@ -25,6 +25,7 @@ const database = client.db(process.env.AUTH_BD_NAME);
 const jobCollection = database.collection("jobs");
 const applicationsCollection = database.collection("applications");
 const userCollection = database.collection("user");
+const offersCollection = database.collection("offers");
 
 async function connectDB() {
   try {
@@ -279,7 +280,7 @@ app.post("/api/offers", async (req: Request, res: Response) => {
       createdAt: new Date(),
     };
 
-    const result = await database.collection("offers").insertOne(offerData);
+    const result = await offersCollection.insertOne(offerData);
 
     return res.status(201).json({
       success: true,
@@ -349,6 +350,37 @@ app.get("/api/analytics", async (req: Request, res: Response) => {
     return res.status(500).json({ success: false, message: "Server error" });
   }
 });
+
+// GET: Fetch Direct Offers for a specific Freelancer
+app.get(
+  "/api/offers/freelancer/:email",
+  async (req: Request, res: Response) => {
+    try {
+      const { email } = req.params;
+
+      if (!email) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Email is required" });
+      }
+
+      const offers = await offersCollection
+        .find({ freelancerEmail: email })
+        .sort({ createdAt: -1 })
+        .toArray();
+
+      return res.status(200).json({
+        success: true,
+        offers,
+      });
+    } catch (error) {
+      console.error("Error fetching freelancer offers:", error);
+      return res
+        .status(500)
+        .json({ success: false, message: "Failed to fetch offers" });
+    }
+  },
+);
 
 // Local Development listen
 if (process.env.NODE_ENV !== "production") {
