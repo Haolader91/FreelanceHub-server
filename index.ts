@@ -165,6 +165,33 @@ app.get("/api/client/applications", async (req: Request, res: Response) => {
   }
 });
 
+// Fetch applications submitted by a specific Freelancer
+app.get(
+  "/api/freelancer/my-applications",
+  async (req: Request, res: Response) => {
+    try {
+      const applicantEmail = req.query.email as string;
+
+      if (!applicantEmail) {
+        return res
+          .status(400)
+          .send({ success: false, message: "Applicant email is required" });
+      }
+
+      // ফ্রিলেঞ্চারের ইমেইল অনুযায়ী ডাটাবেজ থেকে অ্যাপ্লাই করা জবগুলো আনা
+      const applications = await applicationsCollection
+        .find({ applicantEmail: applicantEmail })
+        .sort({ _id: -1 })
+        .toArray();
+
+      res.send({ success: true, applications });
+    } catch (error) {
+      console.error("Error fetching freelancer applications:", error);
+      res.status(500).send({ success: false, error: "Internal Server Error" });
+    }
+  },
+);
+
 // Local Development listen
 if (process.env.NODE_ENV !== "production") {
   app.listen(port, () => {
