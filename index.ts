@@ -24,6 +24,7 @@ const client = new MongoClient(uri);
 const database = client.db(process.env.AUTH_BD_NAME);
 const jobCollection = database.collection("jobs");
 const applicationsCollection = database.collection("applications");
+const userCollection = database.collection("user");
 
 async function connectDB() {
   try {
@@ -228,6 +229,26 @@ app.patch(
     }
   },
 );
+
+// hire-freelancer pager jonne sob user dekanor api
+app.get("/api/freelancers", async (req: Request, res: Response) => {
+  try {
+    const freelancers = await userCollection
+      .find({ role: "FREELANCER" })
+      .toArray();
+
+    return res.status(200).json({
+      success: true,
+      freelancers,
+    });
+  } catch (error) {
+    console.error("Error fetching users from database:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch users",
+    });
+  }
+});
 
 // Local Development listen
 if (process.env.NODE_ENV !== "production") {
